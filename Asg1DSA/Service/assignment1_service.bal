@@ -4,166 +4,116 @@
 import ballerina/http;
 
 listener http:Listener ep0 = new (9090, config = {host: "localhost"});
-Lecturer[] allLecturers=[];
-Course[] allCourses=[];
+
+table<Lecturer> key(staffNumber) lecturersTable = table[];
 service / on ep0 {
+    
     # Get a list of all lecturers
     #
     # + return - A list of lecturers 
     resource function get lecturers() returns Lecturer[] {
-        return [];
+        Lecturer[] lecturers = [];
+        foreach var lecturer in lecturersTable {
+            lecturers.push(lecturer);
+        }
+        return lecturers;
     }
     # Add a new lecturer
     #
     # + payload - parameter description 
     # + return - Lecturer created successfully 
     resource function post lecturers(@http:Payload Lecturer payload) returns Lecturer {
-        // Generate a unique staff number for the new lecturer
-        string staffNumber = generateUniqueStaffNumber();
-
-        // Assign the generated staff number to the payload
-        payload.staffNumber = staffNumber;
-
-        // Add the new lecturer to the array using the custom addLecturer function
-        addLecturer(allLecturers, payload);
-
-        // Return the added lecturer as confirmation
+        lecturersTable.add(payload);
         return payload;
     }
     # Get details of a specific lecturer by staff number
     #
     # + staffNumber - parameter description 
     # + return - Lecturer details 
-    resource function get lecturers/[string staffNumber]() returns string|Lecturer {
-        // Extract the staffNumber from the path parameter
-    string requestedStaffNumber = staffNumber;
-
-    // Find the lecturer with the specified staff number
-    Lecturer? foundLecturer = findLecturerByStaffNumber(allLecturers, requestedStaffNumber);
-
-    if (foundLecturer != ()) {
-        // If a lecturer with the specified staff number is found, return the details
-        return foundLecturer;
-    }  else {
-        // If no matching lecturer is found, return an error message
-        return "Lecturer not found";
+    resource function get lecturers/[string staffNumber]() returns Lecturer|http:Response {
+        string requestedStaffNumber = staffNumber;
+        Lecturer? foundLecturer = lecturersTable[requestedStaffNumber];
+        if (foundLecturer != ()) {
+            return foundLecturer;
+        }
+        // Handle lecturer not found case
+        http:Response res = new;
+        res.statusCode = http:STATUS_NOT_FOUND;
+        res.setPayload("Lecturer not found");
+        return res;
     }
-    }    
     # Update an existing lecturer's information
     #
     # + staffNumber - parameter description 
     # + payload - parameter description 
     # + return - Lecturer updated successfully 
-    resource function put lecturers/[string staffNumber](@http:Payload Lecturer payload) returns string|Lecturer {
-    // Extract the staffNumber from the path parameter
-    string requestedStaffNumber = staffNumber;
-
-    // Find the lecturer with the specified staff number
-    Lecturer? existingLecturer = findLecturerByStaffNumber(allLecturers, requestedStaffNumber);
-
-    if (existingLecturer != ()) {
-        // If a lecturer with the specified staff number is found, update their information
-        // You can update the properties of the existing lecturer with the values from the payload
-        existingLecturer.staffName = payload.staffName;
-        existingLecturer.title = payload.title;
-        existingLecturer.officeNumber = payload.officeNumber;
-        existingLecturer.courses = payload.courses;
-
-        // Return the updated lecturer as confirmation
-        return existingLecturer;
-    } else {
-        // If no matching lecturer is found, return an error message
-        return "Lecturer not found";
+   resource function put lecturers/[string staffNumber](@http:Payload Lecturer payload) returns Lecturer|http:Response {
+        string requestedStaffNumber = staffNumber;
+        Lecturer? existingLecturer = lecturersTable[requestedStaffNumber];
+        if (existingLecturer != ()) {
+    map<string> lecturerMap = {};
+    lecturerMap[requestedStaffNumber] = payload.toJsonString();
+            return payload;
+        }
+        // Handle lecturer not found case
+        http:Response res = new;
+        res.statusCode = http:STATUS_NOT_FOUND;
+        res.setPayload("Lecturer not found");
+        return res;
     }
-}
-
-    
     # Delete a lecturer by staff number
     #
     # + staffNumber - parameter description 
     # + return - No content 
-    # Delete a lecturer by staff number
-#
-# + staffNumber - parameter description 
-# + return - No content 
-resource function delete lecturers/[string staffNumber]() returns http:Response {
-    // Extract the staffNumber from the path parameter
-    string requestedStaffNumber = staffNumber;
+    // Define a resource function to delete a lecturer by name
+resource function delete lecturers/[string staffNumber]() returns string {
+    // Extract the staff name from the path parameter
+    string requestedStaffName = staffNumber;
 
-    // Find the index of the lecturer with the specified staff number
-    int? lecturerIndex = findLecturerIndexByStaffNumber(allLecturers, requestedStaffNumber);
+    // Remove the lecturer from the table based on the staff name
+    Lecturer? removedLecturer = lecturersTable.remove(requestedStaffName);
 
-    if (lecturerIndex != null) {
-        // If a lecturer with the specified staff number is found, remove it from the array
-        Lecturer remove = allLecturers.remove(lecturerIndex);
+    if (removedLecturer != null) {
+        return requestedStaffName + " successfully deleted";
     } else {
-        // If no matching lecturer is found, return a 404 Not Found status and message
-        error e = error("Lecturer not found");
-        http:Response res = new;
-        res.statusCode = http:STATUS_NOT_FOUND;
-        res.setPayload(e.message());
-        return res;
-        
-}
+        return requestedStaffName + " not found";
+    }
 }
 
-    
     # Get all lecturers teaching a certain course
     #
     # + courseCode - parameter description 
     # + return - A list of lecturers 
-    resource function get courses/[string courseCode]/lecturers() returns Lecturer[] {
+   resource function get lectcourses/[string courseCode]/lecturers() returns Lecturer[] {
+    string requestedCourseCode = courseCode;
+    Lecturer[] lecturersTeachingCourse = [];
+    foreach var lecturer in lecturersTable {
+        boolean hasCourse = false;
+        foreach var course in lecturer.courses {
+            if (course.courseCode == requestedCourseCode) {
+                hasCourse = true;
+                break;
+            }
+        }
+        if (hasCourse) {
+            lecturersTeachingCourse.push(lecturer);
+        }
     }
+    return lecturersTeachingCourse;
+}
+
     # Get all lecturers sitting in the same office
     #
     # + officeNumber - parameter description 
     # + return - A list of lecturers 
     resource function get offices/[string officeNumber]/lecturers() returns Lecturer[] {
-    }
-}
-
-function addLecturer(Lecturer[] allLecturers1, Lecturer r) {
-    
-}
-
-function generateUniqueStaffNumber() returns string {
-    return "";
-}
-
-// Define a custom function to find a lecturer by staff number
-function findLecturerByStaffNumber(Lecturer[] arr, string staffNumber) returns Lecturer? {
-    // Iterate through the array and return the lecturer with the matching staff number
-    foreach var lecturer in arr {
-        if (lecturer.staffNumber == staffNumber) {
-            return lecturer;
+        string requestedOfficeNumber = officeNumber;
+        Lecturer[] lecturersInOffice = [];
+        foreach var lecturer in lecturersTable {
+            if (requestedOfficeNumber == lecturer.officeNumber) {
+                lecturersInOffice.push(lecturer);
+            }
         }
+        return lecturersInOffice;
     }
-    // Return null if no matching lecturer is found
-    return ();
-}
-
-
-// Define a custom function to remove elements from an array based on a specific criterion
-function removeLecturerByStaffNumber(Lecturer[] arr, string staffNumber) returns Lecturer[] {
-    // Create a new array to store the remaining lecturers
-    Lecturer[] updatedArray = [];
-
-    // Iterate through the array and add lecturers to the updated array, excluding those with the matching staff number
-    foreach var lecturer in arr {
-        if (lecturer.staffNumber != staffNumber) {
-            updatedArray.push(lecturer);
-        }
-    }
-
-    return updatedArray;
-}
-function findLecturerIndexByStaffNumber(Lecturer[] arr, string staffNumber) returns int? {
-    // Iterate through the array and find the index of the lecturer with the matching staff number
-    foreach var lecturer in arr {
-        if (lecturer.staffNumber == staffNumber) {
-    return ();
-        }
-    }
-    // Return null if no matching lecturer is found
-    return ();
 }
