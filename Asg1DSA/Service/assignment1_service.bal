@@ -48,18 +48,15 @@ service / on ep0 {
     # + payload - parameter description 
     # + return - Lecturer updated successfully 
    resource function put lecturers/[string staffNumber](@http:Payload Lecturer payload) returns Lecturer|http:Response {
-        string requestedStaffNumber = staffNumber;
-        Lecturer? existingLecturer = lecturersTable[requestedStaffNumber];
-        if (existingLecturer != ()) {
-    map<string> lecturerMap = {};
-    lecturerMap[requestedStaffNumber] = payload.toJsonString();
-            return payload;
-        }
-        // Handle lecturer not found case
-        http:Response res = new;
+        error? err = lecturersTable.put(payload);
+
+        if(err is error){
+              http:Response res = new;
         res.statusCode = http:STATUS_NOT_FOUND;
         res.setPayload("Lecturer not found");
         return res;
+        }
+      return payload;
     }
     # Delete a lecturer by staff number
     #
