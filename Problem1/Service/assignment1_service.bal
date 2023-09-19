@@ -22,9 +22,9 @@ service / on ep0 {
     #
     # + payload - parameter description 
     # + return - Lecturer created successfully 
-    resource function post lecturers(@http:Payload Lecturer payload) returns Lecturer {
+    resource function post lecturers(@http:Payload Lecturer payload) returns string {
         lecturersTable.add(payload);
-        return payload;
+        return payload.toString();
     }
     # Get details of a specific lecturer by staff number
     #

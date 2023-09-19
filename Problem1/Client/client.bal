@@ -13,6 +13,7 @@ public function main() returns error? {
     io:println("4. View All Lecturers");
     io:println("5. View Lecturers By Staff Number");
     io:println("6. View Lecturers By Office Number");
+    io:println("7: View Lecturer By Course Code");
     string option = io:readln("Choose an option: ");
 
     match option {
@@ -51,8 +52,12 @@ public function main() returns error? {
             check getByStaffNumber(clientEp, staffNumber);
         }
         "6" => {
-            string office_number = io:readln("Enter Office Number");
+            string office_number = io:readln("Enter Office Number: ");
             check getByOfficeNumber(clientEp, office_number);
+        }
+         "7" => {
+            string course_code = io:readln("Enter Course Code: ");
+            check getByCourseCode(clientEp, course_code);
         }
         _ => {
             io:println("Invalid Key");
@@ -164,6 +169,27 @@ public function getByOfficeNumber(http:Client http, string officeNumber) returns
         io:println("Courses: ", lecturer.courses);
         io:println("--------------------------");
         string exit = io:readln("Press 0 to go back");
+
+        if (exit == "0") {
+            error? mainResult = main();
+            if mainResult is error {
+                io:println("Error, You can't go back.");
+            }
+        }
+    }
+}
+
+public function getByCourseCode(http:Client http, string courseCode) returns error?{
+     if (http is http:Client) {
+        Lecturer lecturer = check http->/lectcourses/[courseCode];
+        io:println("--------------------------");
+        io:println("Staff Number : ", lecturer.staffNumber);
+        io:println("Office Number: ", lecturer.officeNumber);
+        io:println("Staff Name: ", lecturer.staffName);
+        io:println("Title: ", lecturer.title);
+        io:println("Courses: ", lecturer.courses);
+        io:println("--------------------------");
+        string exit = io:readln("Press 0 to go back: ");
 
         if (exit == "0") {
             error? mainResult = main();
