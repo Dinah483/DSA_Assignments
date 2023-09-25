@@ -142,17 +142,16 @@ public function getAll(http:Client http) returns error? {
 
 public function getByStaffNumber(http:Client http, string staffNumber) returns error? {
     if (http is http:Client) {
-        Lecturer[] lecturer = check http->/lecturers/[staffNumber];
-        foreach Lecturer item in lecturer {
+        Lecturer lecturer = check http->/lecturers/[staffNumber];
         io:println("--------------------------");
-        io:println("Staff Number : ", item.staffNumber);
-        io:println("Office Number: ", item.officeNumber);
-        io:println("Staff Name: ", item.staffName);
-        io:println("Title: ", item.title);
-        io:println("Courses: ", item.courses);
-        }
+        io:println("Staff Number : ", lecturer.staffNumber);
+        io:println("Office Number: ", lecturer.officeNumber);
+        io:println("Staff Name: ", lecturer.staffName);
+        io:println("Title: ", lecturer.title);
+        io:println("Courses: ", lecturer.courses);
         io:println("--------------------------");
         string exit = io:readln("Press 0 to go back");
+
         if (exit == "0") {
             error? mainResult = main();
             if mainResult is error {
