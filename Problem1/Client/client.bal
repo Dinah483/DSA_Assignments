@@ -29,7 +29,7 @@ public function main() returns error? {
             lecturer.courses= courseName;
             check create( clientEp , lecturer);
         }
-        "2" => {
+       "2" => {
             // LecturerArr lecturers = [];
 
             Lecturer lecturer={staffNumber: io:readln("Enter staffNumber: ")};
@@ -42,7 +42,7 @@ public function main() returns error? {
         }
         "3" => {
             string staff_number = io:readln("Enter Staff Number: ");
-            check delete(clientEp, staff_number);
+            string stringResult = check delete(clientEp, staff_number);
         }
         "4" => {
             check getAll(clientEp);
@@ -98,20 +98,23 @@ public function update(http:Client http, Lecturer lecturer) returns error? {
     io:println(lecturer);
 }
 
-public function delete(http:Client http, string|string[] name) returns error? {
+// HTTP client function to delete a lecturer by staff number
+public function delete(http:Client http, string staffNumber) returns string | error {
     if (http is http:Client) {
-        string message = check http->/deleteCourseByName.get({name});
-        io:println(message);
-        io:println("--------------------------");
-        string exit = io:readln("Press 0 to go back");
-        if (exit == "0") {
-            error? mainResult = main();
-            if mainResult is error {
-                io:println("Error, You can't go back.");
-            }
+        http:Response response = check http->delete("/lecturers/" + staffNumber);
+
+        if (response.statusCode == http:STATUS_OK) {
+            string message = check response.getTextPayload();
+            return message;
+        } else if (response.statusCode == http:STATUS_NOT_FOUND) {
+            return "Lecturer not found";
+        } else {
+            // Handle other error cases here
+    return response.getTextPayload();
         }
     }
 }
+
 
 public function getAll(http:Client http) returns error? {
     if (http is http:Client) {
@@ -139,16 +142,17 @@ public function getAll(http:Client http) returns error? {
 
 public function getByStaffNumber(http:Client http, string staffNumber) returns error? {
     if (http is http:Client) {
-        Lecturer lecturer = check http->/lecturers(staffNumber = staffNumber);
+        Lecturer[] lecturer = check http->/lecturers/[staffNumber];
+        foreach Lecturer item in lecturer {
         io:println("--------------------------");
-        io:println("Staff Number : ", lecturer.staffNumber);
-        io:println("Office Number: ", lecturer.officeNumber);
-        io:println("Staff Name: ", lecturer.staffName);
-        io:println("Title: ", lecturer.title);
-        io:println("Courses: ", lecturer.courses);
+        io:println("Staff Number : ", item.staffNumber);
+        io:println("Office Number: ", item.officeNumber);
+        io:println("Staff Name: ", item.staffName);
+        io:println("Title: ", item.title);
+        io:println("Courses: ", item.courses);
+        }
         io:println("--------------------------");
         string exit = io:readln("Press 0 to go back");
-
         if (exit == "0") {
             error? mainResult = main();
             if mainResult is error {
@@ -160,13 +164,15 @@ public function getByStaffNumber(http:Client http, string staffNumber) returns e
 
 public function getByOfficeNumber(http:Client http, string officeNumber) returns error? {
     if (http is http:Client) {
-        Lecturer lecturer = check http->/offices/[officeNumber];
+        Lecturer[] lecturer = check http->/offices/[officeNumber]/lecturers;
+        foreach Lecturer item in lecturer {
         io:println("--------------------------");
-        io:println("Staff Number : ", lecturer.staffNumber);
-        io:println("Office Number: ", lecturer.officeNumber);
-        io:println("Staff Name: ", lecturer.staffName);
-        io:println("Title: ", lecturer.title);
-        io:println("Courses: ", lecturer.courses);
+        io:println("Staff Number : ", item.staffNumber);
+        io:println("Office Number: ", item.officeNumber);
+        io:println("Staff Name: ", item.staffName);
+        io:println("Title: ", item.title);
+        io:println("Courses: ", item.courses);
+        }
         io:println("--------------------------");
         string exit = io:readln("Press 0 to go back");
 
@@ -181,13 +187,15 @@ public function getByOfficeNumber(http:Client http, string officeNumber) returns
 
 public function getByCourseCode(http:Client http, string courseCode) returns error?{
      if (http is http:Client) {
-        Lecturer lecturer = check http->/lectcourses/[courseCode];
+        Lecturer[] lecturer = check http->/lectcourses/[courseCode]/lecturers;
+        foreach Lecturer item in lecturer {
         io:println("--------------------------");
-        io:println("Staff Number : ", lecturer.staffNumber);
-        io:println("Office Number: ", lecturer.officeNumber);
-        io:println("Staff Name: ", lecturer.staffName);
-        io:println("Title: ", lecturer.title);
-        io:println("Courses: ", lecturer.courses);
+        io:println("Staff Number : ", item.staffNumber);
+        io:println("Office Number: ", item.officeNumber);
+        io:println("Staff Name: ", item.staffName);
+        io:println("Title: ", item.title);
+        io:println("Courses: ", item.courses);
+        }
         io:println("--------------------------");
         string exit = io:readln("Press 0 to go back: ");
 
