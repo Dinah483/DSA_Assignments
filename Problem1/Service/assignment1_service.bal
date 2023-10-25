@@ -1,4 +1,4 @@
-"import ballerina/graphql;
+import ballerina/graphql;
 import ballerinax/mongodb;
 import ballerina/uuid;
 import ballerina/io;
