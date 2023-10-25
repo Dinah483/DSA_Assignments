@@ -38,7 +38,12 @@ type KPI record {
     boolean approved;
 };
 
-
+type SupervisorScore record {
+    string name;
+    decimal score;
+    string employeeId;
+    
+};
 
 type User record {
     readonly string username;
@@ -94,12 +99,7 @@ type CreateDepartmentObjectiveInput record {
     string departmentId;
 };
 
-type CreateSupervisorInput record {
-    string firstName;
-    string lastName;
-    string jobTitle;
-    string position;
-};
+
 
 type CreateKPIInput record {
     string name;
@@ -124,7 +124,6 @@ type UpdateKPIInput record {
     string metricUnit;
     decimal weight;
     decimal score;
-    string departmentId;
     boolean approved;
 };
 
@@ -141,20 +140,32 @@ mongodb:Client mongoClient = check new (mongoConfig);
     string kpiCollectionName = "kpis";  
 
 type UserDetails record {
+    string id;
     string username;
     string role;
     string password;
 };
 
 type LoggedUserDetails record {|
+    string id;
     string username;
     string role;
 |};
+
+type SupervisorScoreInput record {
+    string id;
+    string name;
+    decimal score;
+    string employeeId;
+    
+};
 
 type UserLogin record {|
     string username;
     string password;
 |};
+
+
 
 @graphql:ServiceConfig {
     graphiql: {
@@ -303,6 +314,31 @@ remote function createDepartmentObjective(CreateDepartmentObjectiveInput departm
         approved: kpi.approved
     };
 }
+
+ remote function GradeSupervisor(SupervisorScoreInput kpi) returns SupervisorScore|error? {
+    // Generate a unique KPI ID using UUID.
+    string id = uuid:createType1AsString();
+    io:println("Supervisor Score ID: ", id);
+
+    // Create a JSON object with the provided KPI details.
+    map<json> doc = {
+        "id": id,
+        "name": kpi.name,
+        "score": kpi.score,
+        "employeeId": kpi.employeeId
+
+    };
+
+    // Insert the KPI data into the MongoDB collection.
+    check mongoClient->insert(doc, kpiCollectionName);
+
+    // Return the created KPI.
+    return {
+        name: kpi.name,
+        score: kpi.score,
+        employeeId: kpi.employeeId
+    };
+}
 remote function deleteDepartment(string id) returns string | error? {
     map<json> deleteFilter = { "id": id };
     int deleteRet = checkpanic mongoClient->delete("departments", (), deleteFilter, true);
@@ -420,39 +456,37 @@ remote function approveKPI(string id) returns string | error? {
 }
 
 remote function updateKPI(string id, UpdateKPIInput kpi) returns string | error? {
-    // Use the provided department ID.
-    // string departmentId = id;
-
-    // Create a filter to identify the department to update based on the ID.
+    // Create a filter to identify the KPI to update based on the ID.
     map<json> filter = {
-        "employeeId": id
+        "id": id
     };
 
     // Create an update statement with the $set operator to update specific fields.
     map<json> updateStatement = {
         "$set": {
-            "name":kpi.name,
+            "name": kpi.name,
             "metricUnit": kpi.metricUnit,
             "weight": kpi.weight,
-            "departmentId": kpi.departmentId,
+            "score": kpi.score,
             "approved": kpi.approved
         }
     };
 
-    // Perform the update operation on the "departments" collection.
+    // Perform the update operation on the "kpis" collection.
     int|error response = mongoClient->update(updateStatement, "kpis", null, filter, false, false);
 
     if (response is error) {
-        io:println("Error updating department: " + response.message());
-        return "Failed to update department";
+        io:println("Error updating KPI: " + response.message());
+        return "Failed to update KPI";
     } else if (response > 0) {
-        io:println("Department updated successfully");
-        return "Department updated successfully";
+        io:println("KPI updated successfully");
+        return "KPI updated successfully";
     } else {
-        io:println("No matching department found");
-        return "No matching department found";
+        io:println("No matching KPI found");
+        return "No matching KPI found";
     }
 }
+
 
 remote function scoreKPI(string id, scoreKPIInput kpi) returns string | error? {
     // Use the provided department ID.
@@ -552,6 +586,8 @@ resource function get totalScore(string employeeId) returns string | error {
 }
 
 
+
+
 // In this function, I first create a filter with the employeeId. 
 // Then I call mongoClient->find to get a stream of KPIs that match this filter. 
 // I use a query expression to convert this stream into an array of KPIs. If there are any KPIs, I return them. 
@@ -594,16 +630,17 @@ resource function get supervisedKpis(string supervisorId) returns KPI[] | error 
 
 // query
     resource function get login(UserLogin user) returns LoggedUserDetails|error {
-        stream<UserDetails, error?> usersDeatils = check mongoClient->find(employeeCollectionName, "PerformanceManagement", {username: user.username, password: user.password}, {});
+        stream<UserDetails, error?> usersDeatils = check mongoClient->find(employeeCollectionName, "PerformanceManagement", { username: user.username, password: user.password}, {});
 
         UserDetails[] users = check from var userInfo in usersDeatils
             select userInfo;
         io:println("Users ", users);
         // If the user is found return a user or return a string user not found
         if users.length() > 0 {
-            return {username: users[0].username, role: users[0].role};
+            return {id: users[0].id, username: users[0].username, role: users[0].role};
         }
         return {
+            id:"id not found",
             username: "user not found",
             role: "user not found"
         };
@@ -612,4 +649,3 @@ resource function get supervisedKpis(string supervisorId) returns KPI[] | error 
 }
 
 
-"
